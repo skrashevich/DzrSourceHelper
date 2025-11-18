@@ -1,8 +1,3 @@
-from datetime import datetime
-from pprint import pprint
-
-import requests
-
 from config import GAME_ID
 from config import S_URL
 from config import session
