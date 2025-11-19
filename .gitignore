@@ -2,6 +2,6 @@ __pycache__/
 guide/
 .venv/
 config.ini
+credentials.json
 .env
 *.log
-credentials.json

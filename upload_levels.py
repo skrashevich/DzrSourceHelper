@@ -1,13 +1,9 @@
 import os
-import time
-import json
-
-import requests
 
 from config import session
-from config import G_URL
 from config import S_URL
 from config import GAME_ID
+from gdoc import get_gdoc
 from utils import encode_text
 from utils import upload_tech_level
 from test_doc import test_doc
@@ -16,14 +12,9 @@ from test_doc import test_doc
 
 def upload_levels(add = True) -> None:
     print("Получаю данные из гугл дока")
-    g_response = requests.get(G_URL)
-    if g_response.status_code == 200:
-        g_doc_datas = json.loads(g_response.text)
-        print("Данные из гугл дока получены")
-    else: 
-        print("Ошибка загрузки данных из гугл дока\nПовтори через 30 секунд")
-        time.sleep(30)
-        return None
+    g_doc_datas = get_gdoc()
+    print("Данные из гугл дока получены")
+
 
     if test_doc(g_doc_datas, add): 
         input("Есть ошибки в доке. Заливка невозможна\nНажми любую клавишу для продолжения")
@@ -91,7 +82,7 @@ def upload_levels(add = True) -> None:
                     level_data["bonus"] = "on"
                     level_data["bonusTime"] = g_doc_data.get(title).get("Бонусный:").get("Время бонуса:").get("content")
 
-            if int(level_data["id"]) == 0:
+            if not add and int(level_data["id"]) == 0:
                 continue
             print(f"Заливаю уровень {level_data["title"].decode('cp1251')}")
             headers = {
@@ -99,6 +90,11 @@ def upload_levels(add = True) -> None:
                 "content-type": "application/x-www-form-urlencoded; charset=windows-1251",
             }
             s_resp = session.post(S_URL, headers=headers, data=level_data)
+            if s_resp.status_code != 200:
+                print(f"Уровень {level_data["title"].decode('cp1251')} не загружен")
+                print(f"Код ошибки {s_resp.status_code}")
+            else:
+                print(f"Уровень {level_data["title"].decode('cp1251')} загружен")
         if add:
             upload_tech_level()
 
