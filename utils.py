@@ -46,8 +46,14 @@ $(document).ready(function() {
     tec_level["skvoz"] = "on"
 
 
+    print("Загружаю технический уровень")
     headers = {
     "accept-language": "ru,en;q=0.9,de;q=0.8",
     "content-type": "application/x-www-form-urlencoded; charset=windows-1251",
     }
-    session.post(S_URL, data=tec_level, headers=headers)
+    s_resp = session.post(S_URL, data=tec_level, headers=headers)
+    if s_resp.status_code != 200:
+        print(f"Технический уровень не загружен")
+        print(f"Код ошибки {s_resp.status_code}")
+    else:
+        print(f"Технический уровень загружен")
