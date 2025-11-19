@@ -4,3 +4,4 @@ guide/
 config.ini
 credentials.json
 .env
+*.log
