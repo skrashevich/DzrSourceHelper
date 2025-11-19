@@ -3,3 +3,4 @@ guide/
 .venv/
 config.ini
 credentials.json
+.env

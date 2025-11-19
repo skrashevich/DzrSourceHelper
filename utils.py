@@ -1,8 +1,3 @@
-from datetime import datetime
-from pprint import pprint
-
-import requests
-
 from config import GAME_ID
 from config import S_URL
 from config import session
@@ -14,13 +9,6 @@ def encode_text(text: str) -> str:
                .replace("\ufeff", "") \
                .replace("”", "\"") \
                .encode("windows-1251")
-
-
-def send_log_message(log: str) -> None:
-    TOKEN = "5522451121:AAFsK7BuiYxN07sWo8eTzwlnj-KQ6BQYPok"
-    ADMIN_ID = 411775595
-    
-    resp = requests.get(f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={ADMIN_ID}&text={str(datetime.now())}\n```{log}```&parse_mode=markdown")
 
 
 def rgb_to_hex(r, g, b) -> str:
@@ -58,56 +46,14 @@ $(document).ready(function() {
     tec_level["skvoz"] = "on"
 
 
+    print("Загружаю технический уровень")
     headers = {
     "accept-language": "ru,en;q=0.9,de;q=0.8",
     "content-type": "application/x-www-form-urlencoded; charset=windows-1251",
     }
-    session.post(S_URL, data=tec_level, headers=headers)
-
-
-def struct_gdoc_data(gdoc_data):
-    
-    root = {}
-    stack = [root]
-    heading_levels = {
-        "HEADING_1": 1,
-        "HEADING_2": 2,
-        "HEADING_3": 3,
-        "HEADING_4": 4,
-        "HEADING_5": 5,
-        "HEADING_6": 6,
-        "NORMAL_TEXT": 0,
-        1: "HEADING_1",
-        2: "HEADING_2",
-        3: "HEADING_3",
-        4: "HEADING_4",
-        5: "HEADING_5",
-        6: "HEADING_6"
-    }
-    current_level = 1
-    current_heading_name = ""
-    new_content_block = {}
-    for element in gdoc_data:
-        if element.get("paragraph"):
-            current_heading_type = element.get("paragraph").get("paragraphStyle").get("namedStyleType")
-            if heading_levels.get(element.get("paragraph").get("paragraphStyle").get("namedStyleType")) > current_level:
-                current_level = heading_levels.get(element.get("paragraph").get("paragraphStyle").get("namedStyleType"))
-                current_heading_type = element.get("paragraph").get("paragraphStyle").get("namedStyleType")
-                current_heading_name = element.get("paragraph").get("elements")[0].get("textRun").get("content").strip()
-                new_content_block = {
-                    current_heading_name: ""
-                }
-            else:
-                if current_heading_type != "NORMAL_TEXT":
-                    new_content_block[current_heading_name] = ""
-                else:
-                    for text_element in element.get("paragraph").get("elements"):
-                        new_content_block[current_heading_name] += text_element.get("textRun").get("content")
-        #             print(element)
-        #             print(0)
-        # print("---------------------------------------------")
-        print(new_content_block)
-        input(...)
-
-
-    return gdoc_data
+    s_resp = session.post(S_URL, data=tec_level, headers=headers)
+    if s_resp.status_code != 200:
+        print(f"Технический уровень не загружен")
+        print(f"Код ошибки {s_resp.status_code}")
+    else:
+        print(f"Технический уровень загружен")
