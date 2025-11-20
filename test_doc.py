@@ -10,7 +10,7 @@ def test_doc(g_doc_datas: dict, add: bool) -> bool:
     print("Проверяю гугл док")
     for g_doc_data in g_doc_datas:
         for title in g_doc_data:
-            print(f"Проверяю {title}")
+            print(f"Проверяю '{title}'")
             if not add:
                 if g_doc_data.get(title).get("ID Уровня:") is None:
                     print(f"Нет айди задания {title}")

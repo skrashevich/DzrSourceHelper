@@ -5,6 +5,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from config import GAME_ID
+from config import CITY
 from config import DOCUMENT_ID
 from utils import rgb_to_hex
 
@@ -101,7 +102,7 @@ def set_text_style(element):
 
 
 def set_rich_link(element):
-    SOURCE_FILES_URL = f"https://classic.dzzzr.ru/uploaded/moscow/Night/games/{GAME_ID}"
+    SOURCE_FILES_URL = f"https://classic.dzzzr.ru/uploaded/{CITY}/Night/games/{GAME_ID}"
     if "image" in element.get("richLink").get("richLinkProperties").get("mimeType"):
         IMG_URL = f"{SOURCE_FILES_URL}/{element.get("richLink").get("richLinkProperties").get("title")}"
         return f"<a href=\"{IMG_URL}\" target=\"_blank\"><img style=\"width:300px;\" src=\"{IMG_URL}\"></a>"

@@ -6,6 +6,7 @@ from config import get_session
 from gdoc import get_gdoc
 from utils import encode_text
 from test_doc import test_doc
+from upload_files import upload_files_to_source
 
 
 
@@ -32,7 +33,7 @@ $(document).ready(function() {
     tec_level["skvoz"] = "on"
 
 
-    print("Загружаю технический уровень")
+    print("Заливаю технический уровень")
     headers = {
     "accept-language": "ru,en;q=0.9,de;q=0.8",
     "content-type": "application/x-www-form-urlencoded; charset=windows-1251",
@@ -40,17 +41,16 @@ $(document).ready(function() {
     session = get_session()
     s_resp = session.post(S_URL, data=tec_level, headers=headers)
     if s_resp.status_code != 200:
-        print(f"Технический уровень не загружен")
-        print(f"Код ошибки {s_resp.status_code}")
+        print(f"Технический уровень не залит")
+        print(f"\Код ошибки {s_resp.status_code}")
     else:
-        print(f"Технический уровень загружен")
+        print(f"Технический уровень залит")
 
 
 def upload_levels(add = True) -> None:
-    inp = input("Загрузить файлы из гугл диска в движок\n[1] Да\n[2] Нет")
+    inp = input("Загрузить файлы из гугл диска в движок\n[1] Да\n[2] Нет\n")
     if int(inp) == 1:
-        print("Идет загрузка")
-        print("На самом деле не идет, это пока просто отладочное сообщение")
+        upload_files_to_source()
 
     print("Получаю данные из гугл дока")
     g_doc_datas = get_gdoc()
@@ -58,14 +58,12 @@ def upload_levels(add = True) -> None:
         print("Данные из гуглдока не получены\nНажми любую клавишу для выхода")
     print("Данные из гугл дока получены")
 
-
     if test_doc(g_doc_datas, add): 
         input("Есть ошибки в доке. Заливка невозможна\nНажми любую клавишу для продолжения")
         return None
         
-    inp = input("Ошибок нет\n[1] Продолжить\n[3] Выйти в главное меню\n")
-    os.system('cls' if os.name == 'nt' else 'clear')
-    if int(inp) != 3:
+    inp = input("Ошибок нет\n[1] Продолжить\n[4] Выйти в главное меню\n")
+    if int(inp) != 4:
         for g_doc_data in g_doc_datas:
             level_data = {}
 
@@ -127,7 +125,7 @@ def upload_levels(add = True) -> None:
 
             if not add and int(level_data["id"]) == 0:
                 continue
-            print(f"Заливаю уровень {level_data["title"].decode('cp1251')}")
+            print(f"Заливаю уровень '{level_data["title"].decode('cp1251')}'")
             headers = {
                 "accept-language": "ru,en;q=0.9,de;q=0.8",
                 "content-type": "application/x-www-form-urlencoded; charset=windows-1251",
@@ -135,10 +133,10 @@ def upload_levels(add = True) -> None:
             session = get_session()
             s_resp = session.post(S_URL, headers=headers, data=level_data)
             if s_resp.status_code != 200:
-                print(f"Уровень {level_data["title"].decode('cp1251')} не загружен")
+                print(f"Уровень '{level_data["title"].decode('cp1251')}' не залит")
                 print(f"Код ошибки {s_resp.status_code}")
             else:
-                print(f"Уровень {level_data["title"].decode('cp1251')} загружен")
+                print(f"Уровень '{level_data["title"].decode('cp1251')}' залит")
         if add:
             upload_tech_level()
 

@@ -36,6 +36,5 @@ def get_files_from_drive(service, folder_id):
                     status, done = downloader.next_chunk()
                     print(f'Скачивание {item_name}: {int(status.progress() * 100)}%')
                 files_binaries[item_name] = file_stream.getvalue()
-                print(file_stream)
     
     return files_binaries
