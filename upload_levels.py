@@ -1,18 +1,61 @@
 import os
 
-from config import session
 from config import S_URL
 from config import GAME_ID
+from config import get_session
 from gdoc import get_gdoc
 from utils import encode_text
-from utils import upload_tech_level
 from test_doc import test_doc
 
 
 
+def upload_tech_level() -> None:
+    tec_level = {}
+    tec_level["category"] = GAME_ID
+    tec_level["action"] =  "add_zadanie"
+    tec_level["gZone"] = 0
+    tec_level["title"] = "Технический уровень".encode("windows-1251")
+    tec_level["question"] = """<p>Это техническая заглушка</p>
+<script src="../../uploaded/msk/Night/jquery-1.11.2.min.txt"></script>
+<script src="../../uploaded/msk/Night/jquery.cookie.txt"></script>
+<script type="text/javascript">// <![CDATA[
+$(document).ready(function() {
+  $.ajax({ url: "https://alt.where.games/initn.js?v=1", dataType: "script", cache: true, });
+});
+// ]]></script>""".encode("windows-1251")
+    tec_level["clue1"] = "-"
+    tec_level["clue2"] = "-"
+    tec_level["comment"] = "-"
+    tec_level["code[0]"] = 456457643867837433636
+    tec_level["danger[0]"] = "null"
+    tec_level["bonus"] = "on"
+    tec_level["skvoz"] = "on"
+
+
+    print("Загружаю технический уровень")
+    headers = {
+    "accept-language": "ru,en;q=0.9,de;q=0.8",
+    "content-type": "application/x-www-form-urlencoded; charset=windows-1251",
+    }
+    session = get_session()
+    s_resp = session.post(S_URL, data=tec_level, headers=headers)
+    if s_resp.status_code != 200:
+        print(f"Технический уровень не загружен")
+        print(f"Код ошибки {s_resp.status_code}")
+    else:
+        print(f"Технический уровень загружен")
+
+
 def upload_levels(add = True) -> None:
+    inp = input("Загрузить файлы из гугл диска в движок\n[1] Да\n[2] Нет")
+    if int(inp) == 1:
+        print("Идет загрузка")
+        print("На самом деле не идет, это пока просто отладочное сообщение")
+
     print("Получаю данные из гугл дока")
     g_doc_datas = get_gdoc()
+    if g_doc_datas == None:
+        print("Данные из гуглдока не получены\nНажми любую клавишу для выхода")
     print("Данные из гугл дока получены")
 
 
@@ -89,6 +132,7 @@ def upload_levels(add = True) -> None:
                 "accept-language": "ru,en;q=0.9,de;q=0.8",
                 "content-type": "application/x-www-form-urlencoded; charset=windows-1251",
             }
+            session = get_session()
             s_resp = session.post(S_URL, headers=headers, data=level_data)
             if s_resp.status_code != 200:
                 print(f"Уровень {level_data["title"].decode('cp1251')} не загружен")

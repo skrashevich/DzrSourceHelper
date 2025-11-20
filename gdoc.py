@@ -1,4 +1,3 @@
-import os
 import json
 
 from google.oauth2 import service_account
@@ -6,6 +5,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from config import GAME_ID
+from config import DOCUMENT_ID
 from utils import rgb_to_hex
 
 from dotenv import load_dotenv
@@ -165,7 +165,6 @@ def parse_content(content):
 
 def get_gdoc():
     SCOPES = ['https://www.googleapis.com/auth/documents.readonly']
-    DOCUMENT_ID = os.getenv("DOCUMENT_ID")
     SERVICE_ACCOUNT_FILE = 'credentials.json'
 
     credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)

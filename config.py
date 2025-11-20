@@ -1,29 +1,21 @@
-import configparser
+import os
 
 import requests
 
+from dotenv import load_dotenv
+load_dotenv()
 
 
-config = configparser.ConfigParser()  
-is_exist = config.read("config.ini", encoding="utf-8")
 
+LOGIN = os.getenv("LOGIN")
+PASSWORD = os.getenv("PASSWORD")
 
-if is_exist == []:
-    print("Не найден файл config.ini")
-    input("Нажмите любую клавишу для выхода из программы")
-    exit()
+GAME_ID = os.getenv("GAME_ID")
+S_URL = os.getenv("S_URL")
+DOCUMENT_ID = os.getenv("DOCUMENT_ID")
 
-LOGIN = config["Source"]["Login"]
-print(f"Логин: {LOGIN}")
-PASSWORD = config["Source"]["Password"]
-print(f"Пароль: {PASSWORD}")
-S_URL = config["Source"]["S_Url"]
-print(f"Ссылка на админку: {S_URL}")
-GAME_ID = config["Source"]["Game_Id"]
-print(f"ID Игры: {GAME_ID}")
+def get_session():
+    session = requests.Session()
+    session.auth = (LOGIN, PASSWORD)
 
-G_URL = config["Docs"]["G_Url"]
-print(f"Ссылка на гуглдок: {G_URL}")
-
-session = requests.Session()
-session.auth = (LOGIN, PASSWORD)
+    return session
