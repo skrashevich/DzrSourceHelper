@@ -1,7 +1,7 @@
 import builtins
 from types import SimpleNamespace
 
-import upload_levels
+import src.upload_levels as upload_levels
 
 
 class DummyResponse:
@@ -17,7 +17,9 @@ class DummySession:
         self.gets = []
 
     def post(self, url, headers=None, data=None, cookies=None):
-        self.posts.append({"url": url, "headers": headers, "data": data, "cookies": cookies})
+        self.posts.append(
+            {"url": url, "headers": headers, "data": data, "cookies": cookies}
+        )
         return DummyResponse()
 
     def get(self, url):
@@ -50,15 +52,21 @@ def _build_level(skvoz=True, level_id="1"):
         },
         "Комментарий и фото кодов:": {"content": "comment"},
         "Основные коды уровня:": {
-            "tables": [[
-                ["№", "Код", "КС", "Сектор"],
-                ["1", "CODE1", "1", "A"],
-            ]]
+            "tables": [
+                [
+                    ["№", "Код", "КС", "Сектор"],
+                    ["1", "CODE1", "1", "A"],
+                ]
+            ]
         },
-        "Сектора на уровне:": {"tables": [[
-            ["№", "Название"],
-            ["1", "Sector 1"],
-        ]]},
+        "Сектора на уровне:": {
+            "tables": [
+                [
+                    ["№", "Название"],
+                    ["1", "Sector 1"],
+                ]
+            ]
+        },
         "Количество кодов для взятия:": {
             "Вышка:": {"content": "2"},
         },
@@ -70,17 +78,21 @@ def _build_level(skvoz=True, level_id="1"):
             }
         },
         "Бонусные коды уровня:": {
-            "tables": [[
-                ["№", "Код", "КС", "Бонус"],
-                ["1", "BONUS", "1", "10"],
-            ]]
+            "tables": [
+                [
+                    ["№", "Код", "КС", "Бонус"],
+                    ["1", "BONUS", "1", "10"],
+                ]
+            ]
         },
         "Бонус за полное взятие:": {"content": "5"},
         "Штрафные коды уровня:": {
-            "tables": [[
-                ["№", "Код", "Штраф"],
-                ["1", "FAKE", "2"],
-            ]]
+            "tables": [
+                [
+                    ["№", "Код", "Штраф"],
+                    ["1", "FAKE", "2"],
+                ]
+            ]
         },
         "Штраф за слив:": {"content": "3"},
         "Бонусный:": {"content": "нет", "Время бонуса:": {"content": ""}},
@@ -90,10 +102,16 @@ def _build_level(skvoz=True, level_id="1"):
 def test_upload_levels_add_posts_built_data(monkeypatch):
     fake_session = DummySession()
     monkeypatch.setattr(upload_levels, "get_session", lambda: fake_session)
-    monkeypatch.setattr(upload_levels, "upload_files_to_source", lambda: (_ for _ in ()).throw(AssertionError("should not upload files")))
+    monkeypatch.setattr(
+        upload_levels,
+        "upload_files_to_source",
+        lambda: (_ for _ in ()).throw(AssertionError("should not upload files")),
+    )
 
     uploaded_levels = []
-    monkeypatch.setattr(upload_levels, "upload_tech_level", lambda: uploaded_levels.append("tech"))
+    monkeypatch.setattr(
+        upload_levels, "upload_tech_level", lambda: uploaded_levels.append("tech")
+    )
 
     sample_data = [{"Level 1": _build_level(skvoz=True)}]
     monkeypatch.setattr(upload_levels, "get_gdoc", lambda: sample_data)

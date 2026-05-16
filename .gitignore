@@ -1,5 +1,10 @@
 __pycache__/
+.pytest_cache/
+.vscode/
 .venv/
-credentials.json
-.env
+secrets
+log/
 *.log
+build/
+dist/
+main.spec

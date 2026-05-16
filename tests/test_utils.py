@@ -1,14 +1,14 @@
 import pytest
 
-import utils
+import src.utils as utils
 
 
 def test_encode_text_replaces_newlines_and_removes_control_characters():
-    original = "Line1\nLine2\ufeffExtra\u000b""smart quotes: ”"
+    original = "Line1\nLine2\ufeffExtra\u000b" "smart quotes: ”"
     encoded = utils.encode_text(original)
 
     assert isinstance(encoded, bytes)
-    assert encoded == "Line1<br>Line2Extrasmart quotes: \"".encode("windows-1251")
+    assert encoded == 'Line1<br>Line2Extrasmart quotes: "'.encode("windows-1251")
 
 
 def test_rgb_to_hex_handles_none_and_rounding():

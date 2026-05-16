@@ -1,5 +1,6 @@
 import json
 
+from loguru import logger
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -7,10 +8,7 @@ from googleapiclient.errors import HttpError
 from config import GAME_ID
 from config import CITY
 from config import DOCUMENT_ID
-from utils import rgb_to_hex
-
-from dotenv import load_dotenv
-load_dotenv()
+from src.utils import rgb_to_hex
 
 
 
@@ -19,7 +17,7 @@ def remove_empty_content(node):
         if 'content' in node:
             node['content'] = node['content'].rstrip()
             if not node['content'].strip():
-                del node['content']
+                node['content'] = None
         
         if 'tables' in node:
             node['tables'] = [table for table in node['tables'] 
@@ -32,7 +30,7 @@ def remove_empty_content(node):
                 remove_empty_content(node[key])
                 
                 if isinstance(node[key], dict) and not node[key]:
-                    del node[key]
+                    node[key] = None
         
 
 def extract_table_data(table_element):
@@ -166,7 +164,7 @@ def parse_content(content):
 
 def get_gdoc():
     SCOPES = ['https://www.googleapis.com/auth/documents.readonly']
-    SERVICE_ACCOUNT_FILE = 'credentials.json'
+    SERVICE_ACCOUNT_FILE = 'secrets/credentials.json'
 
     credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     service = build('docs', 'v1', credentials=credentials)
@@ -174,9 +172,11 @@ def get_gdoc():
     try:
         document = service.documents().get(documentId=DOCUMENT_ID, includeTabsContent=True).execute()
     except HttpError as err:
-        print(err)
+        logger.error(err)
         return None
-    print(f"Название дока: {document.get("title")}")
+    # with open(f"{document.get("title")}.json", "w", encoding="utf-8") as f:
+    #     json.dump(document, f, ensure_ascii=False, indent=4)
+    logger.info(f"Название дока: {document.get("title")}")
     
     tabs = []
     for tab in document.get('tabs')[3:]:

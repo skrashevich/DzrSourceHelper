@@ -1,9 +1,9 @@
 import importlib
 import types
 
-import gdoc
-import test_doc
-import download_files
+import src.gdoc as gdoc
+import src.test_doc as test_doc
+import src.download_files as download_files
 
 
 def test_parse_content_handles_styles_and_tables():
@@ -28,14 +28,50 @@ def test_parse_content_handles_styles_and_tables():
         {
             "table": {
                 "tableRows": [
-                    {"tableCells": [
-                        {"content": [{"paragraph": {"elements": [{"textRun": {"content": "H1"}}]}}]},
-                        {"content": [{"paragraph": {"elements": [{"textRun": {"content": "H2"}}]}}]},
-                    ]},
-                    {"tableCells": [
-                        {"content": [{"paragraph": {"elements": [{"textRun": {"content": "R1"}}]}}]},
-                        {"content": [{"paragraph": {"elements": [{"textRun": {"content": "R2"}}]}}]},
-                    ]},
+                    {
+                        "tableCells": [
+                            {
+                                "content": [
+                                    {
+                                        "paragraph": {
+                                            "elements": [{"textRun": {"content": "H1"}}]
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "content": [
+                                    {
+                                        "paragraph": {
+                                            "elements": [{"textRun": {"content": "H2"}}]
+                                        }
+                                    }
+                                ]
+                            },
+                        ]
+                    },
+                    {
+                        "tableCells": [
+                            {
+                                "content": [
+                                    {
+                                        "paragraph": {
+                                            "elements": [{"textRun": {"content": "R1"}}]
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "content": [
+                                    {
+                                        "paragraph": {
+                                            "elements": [{"textRun": {"content": "R2"}}]
+                                        }
+                                    }
+                                ]
+                            },
+                        ]
+                    },
                 ]
             }
         },
@@ -54,14 +90,29 @@ def test_test_doc_flags_missing_fields():
         {
             "Broken": {
                 "Сквозной:": {"content": "да"},
-                "Текст уровня:": {"Текст:": {"content": None}, "Примечания:": {"content": None}},
-                "Подсказка 1:": {"Текст:": {"content": None}, "Выдавать по запросу:": {"content": None}, "Штраф за использование:": {"content": None}},
-                "Подсказка 2:": {"Текст:": {"content": None}, "Выдавать по запросу:": {"content": None}, "Штраф за использование:": {"content": None}},
+                "Текст уровня:": {
+                    "Текст:": {"content": None},
+                    "Примечания:": {"content": None},
+                },
+                "Подсказка 1:": {
+                    "Текст:": {"content": None},
+                    "Выдавать по запросу:": {"content": None},
+                    "Штраф за использование:": {"content": None},
+                },
+                "Подсказка 2:": {
+                    "Текст:": {"content": None},
+                    "Выдавать по запросу:": {"content": None},
+                    "Штраф за использование:": {"content": None},
+                },
                 "Комментарий и фото кодов:": {"content": None},
-                "Основные коды уровня:": {"tables": [[
-                    ["№", "Код", "КС", "Сектор"],
-                    ["1", "", "", ""],
-                ]]},
+                "Основные коды уровня:": {
+                    "tables": [
+                        [
+                            ["№", "Код", "КС", "Сектор"],
+                            ["1", "", "", ""],
+                        ]
+                    ]
+                },
                 "Количество кодов для взятия:": {"Вышка:": {"content": None}},
                 "Штраф за слив:": {"content": None},
                 "Бонусный:": {"content": None},
@@ -100,10 +151,12 @@ class _FakeService:
             return self
 
         def execute(self):
-            return {"files": [
-                {"id": "1", "name": "image.png", "mimeType": "image/png"},
-                {"id": "2", "name": "note.txt", "mimeType": "text/plain"},
-            ]}
+            return {
+                "files": [
+                    {"id": "1", "name": "image.png", "mimeType": "image/png"},
+                    {"id": "2", "name": "note.txt", "mimeType": "text/plain"},
+                ]
+            }
 
         def get_media(self, fileId=None):
             return {"fileId": fileId}
