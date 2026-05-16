@@ -1,7 +1,28 @@
-import builtins
-from types import SimpleNamespace
-
+import src.utils as utils
 import src.upload_levels as upload_levels
+
+
+def _mock_questionary(monkeypatch, confirm_answers):
+    answers = iter(confirm_answers)
+
+    def mock_confirm(*args, **kwargs):
+        class _Q:
+            @staticmethod
+            def ask(**_kw):
+                return next(answers)
+
+        return _Q()
+
+    def mock_text(*args, **kwargs):
+        class _T:
+            @staticmethod
+            def ask(**_kw):
+                return ""
+
+        return _T()
+
+    monkeypatch.setattr(upload_levels.questionary, "confirm", mock_confirm)
+    monkeypatch.setattr(upload_levels.questionary, "text", mock_text)
 
 
 class DummyResponse:
@@ -120,8 +141,7 @@ def test_upload_levels_add_posts_built_data(monkeypatch):
     monkeypatch.setattr(upload_levels, "GAME_ID", "game")
     monkeypatch.setattr(upload_levels, "S_URL", "https://example.test")
 
-    inputs = iter(["2", "1", ""])
-    monkeypatch.setattr(builtins, "input", lambda *args, **kwargs: next(inputs))
+    _mock_questionary(monkeypatch, [False, True])
 
     upload_levels.upload_levels(add=True)
 
@@ -131,6 +151,10 @@ def test_upload_levels_add_posts_built_data(monkeypatch):
     assert post_call["data"]["action"] == "add_zadanie"
     assert post_call["data"]["category"] == "game"
     assert post_call["data"]["title"] == "Level 1".encode("cp1251")
+    assert "spoiler[0]" not in post_call["data"]
+    assert "spoilerCode[0]" not in post_call["data"]
+    assert post_call["data"]["spoiler[1]"] == utils.encode_text("spoiler")
+    assert post_call["data"]["spoilerCode[1]"] == utils.encode_text("spoiler_code")
     assert uploaded_levels == ["tech"]
 
 
@@ -147,8 +171,7 @@ def test_upload_levels_update_skips_zero_id(monkeypatch):
     monkeypatch.setattr(upload_levels, "GAME_ID", "game")
     monkeypatch.setattr(upload_levels, "S_URL", "https://example.test")
 
-    inputs = iter(["2", "1", ""])
-    monkeypatch.setattr(builtins, "input", lambda *args, **kwargs: next(inputs))
+    _mock_questionary(monkeypatch, [False, True])
 
     upload_levels.upload_levels(add=False)
 

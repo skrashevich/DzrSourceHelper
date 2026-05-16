@@ -10,6 +10,7 @@ from src.utils import encode_text
 from src.test_doc import test_doc
 from src.test_doc import test_doc_headers
 from src.upload_files import upload_files_to_source
+from src.spoiler_helpers import iter_uploadable_spoilers, spoiler_preview_summary
 
 
 
@@ -52,14 +53,46 @@ $(document).ready(function() {
         return False
 
 
+def _log_levels_preview(g_doc_datas, add: bool) -> None:
+    logger.info("────────── Сводка перед заливкой ──────────")
+    n = 0
+    for g_doc_data in g_doc_datas:
+        for title in g_doc_data:
+            n += 1
+            node = g_doc_data[title]
+            if add:
+                level_id = "новый"
+            else:
+                raw_id = (node.get(LEVEL_ID) or {}).get(CONTENT)
+                level_id = raw_id if raw_id not in (None, "") else "—"
+            sk = (node.get(SKVOZ) or {}).get(CONTENT) or "?"
+            bonus = (node.get(BONUS) or {}).get(CONTENT) or "?"
+            mc = node.get(MAIN_CODES)
+            n_codes = 0
+            if mc and mc.get(TABLES) and mc[TABLES]:
+                n_codes = max(0, len(mc[TABLES][0]) - 1)
+            sp_line = spoiler_preview_summary(node.get(SPOILERS))
+            logger.info(
+                f" {n}. «{title}» | ID: {level_id} | сквозной: {sk} | бонус: {bonus} | "
+                f"кодов (осн.): {n_codes} | спойлеры: {sp_line}"
+            )
+    if add:
+        logger.info("После перечисленных уровней будет добавлен технический уровень.")
+    logger.info("──────────────────────────────────────────")
+
+
 def upload_levels(add = True) -> None:
     if questionary.confirm("Загрузить файлы из гугл диска в движок?", default=False).ask():
         upload_files_to_source()
 
     logger.info("Получаю данные из гугл дока")
     g_doc_datas = get_gdoc()
-    if g_doc_datas == None:
-        logger.warning("Данные из гуглдока не получены")
+    if g_doc_datas is None:
+        logger.error(
+            "Данные из Google Docs не получены (проверьте DOCUMENT_ID в secrets/.env — "
+            "это ID из URL документа; сервисный аккаунт должен иметь доступ к файлу)."
+        )
+        return None
     logger.success("Данные из гугл дока получены")
 
     if test_doc_headers(g_doc_datas):
@@ -71,6 +104,8 @@ def upload_levels(add = True) -> None:
         logger.warning("Есть ошибки в данных дока. Заливка невозможна")
         return None
     logger.success("Ошибок данных дока нет")
+
+    _log_levels_preview(g_doc_datas, add)
 
     if questionary.confirm("Продолжить?", default=False).ask():
         has_error = False
@@ -123,10 +158,13 @@ def upload_levels(add = True) -> None:
                         level_data[f"fakeShtraf[{i}]"] = shtraf[2]
                 
                 if g_doc_data.get(title).get(SPOILERS):
-                    for i, spoiler in enumerate(g_doc_data.get(title).get(SPOILERS)):
-                        if spoiler == "content": continue
-                        level_data[f"spoiler[{i}]"] = encode_text(g_doc_data.get(title).get(SPOILERS).get(f"{SPOILER} {i}:").get(TEXT).get(CONTENT))
-                        level_data[f"spoilerCode[{i}]"] = encode_text(g_doc_data.get(title).get(SPOILERS).get(f"{SPOILER} {i}:").get(SPOILER_ANSWERS).get(CONTENT))   
+                    # DozoR expects spoiler fields to start from 1; spoiler[0] is ignored/empty.
+                    for spoiler_ix, (_sk, text_raw, code_raw) in enumerate(
+                        iter_uploadable_spoilers(g_doc_data.get(title).get(SPOILERS)),
+                        start=1,
+                    ):
+                        level_data[f"spoiler[{spoiler_ix}]"] = encode_text(text_raw)
+                        level_data[f"spoilerCode[{spoiler_ix}]"] = encode_text(code_raw)
                 
                 level_data["penalty"] = g_doc_data.get(title).get(PENALTY).get(CONTENT)
                 

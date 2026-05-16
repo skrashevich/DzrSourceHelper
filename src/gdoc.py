@@ -1,13 +1,19 @@
 import json
+import hashlib
+import io
+from urllib.parse import quote
 
 from loguru import logger
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaIoBaseDownload
+import requests
 
 from config import GAME_ID
 from config import CITY
 from config import DOCUMENT_ID
+from config import FOLDER_ID
 from src.utils import rgb_to_hex
 
 
@@ -54,49 +60,51 @@ def extract_table_data(table_element):
 
 def set_text_style(element):
     text_out = ""
-    if element.get("textRun").get("textStyle") != {}:
-        if element.get("textRun").get("textStyle").get("bold"):
-            text_buffer = f"<b>{element['textRun'].get('content')}</b>"
+    tr = element.get("textRun") or {}
+    ts = tr.get("textStyle") or {}
+    if ts:
+        if ts.get("bold"):
+            text_buffer = f"<b>{tr.get('content')}</b>"
             if text_out == "":
                 text_out = text_buffer
             else:
                 text_out = f"<b>{text_out}</b>"
-        if element.get("textRun").get("textStyle").get("italic"):
-            text_buffer = f"<i>{element['textRun'].get('content')}</i>"
+        if ts.get("italic"):
+            text_buffer = f"<i>{tr.get('content')}</i>"
             if text_out == "":
                 text_out = text_buffer
             else:
                 text_out = f"<i>{text_out}</i>"
-        if element.get("textRun").get("textStyle").get("underline"):
-            text_buffer = f"<u>{element['textRun'].get('content')}</u>"
+        if ts.get("underline"):
+            text_buffer = f"<u>{tr.get('content')}</u>"
             if text_out == "":
                 text_out = text_buffer
             else:
                 text_out = f"<u>{text_out}</u>"
-        if element.get("textRun").get("textStyle").get("strikethrough"):
-            text_buffer = f"<s>{element['textRun'].get('content')}</s>"
+        if ts.get("strikethrough"):
+            text_buffer = f"<s>{tr.get('content')}</s>"
             if text_out == "":
                 text_out = text_buffer
             else:
                 text_out = f"<s>{text_out}</s>"
-        if element.get("textRun").get("textStyle").get("link"):
-            text_buffer = f"<a href=\"{element.get("textRun").get("textStyle").get("link").get("url")}\" target=\"_blank\">{element['textRun'].get('content')}</a>"
+        if ts.get("link"):
+            text_buffer = f"<a href=\"{ts.get("link").get("url")}\" target=\"_blank\">{tr.get('content')}</a>"
             if text_out == "":
                 text_out = text_buffer
             else:
-                text_out = f"<a href=\"{element.get("textRun").get("textStyle").get("link").get("url")}\" target=\"_blank\">{text_out}</a>"
-        if element.get("textRun").get("textStyle").get("foregroundColor"):
-            red = element.get("textRun").get("textStyle").get("foregroundColor").get("color").get("rgbColor").get("red")
-            green = element.get("textRun").get("textStyle").get("foregroundColor").get("color").get("rgbColor").get("green")
-            blue = element.get("textRun").get("textStyle").get("foregroundColor").get("color").get("rgbColor").get("blue")
-            text_buffer = f"<span style=\"color:{rgb_to_hex(red, green, blue)};\">{element['textRun'].get('content')}</span>"
+                text_out = f"<a href=\"{ts.get("link").get("url")}\" target=\"_blank\">{text_out}</a>"
+        if ts.get("foregroundColor"):
+            red = ts.get("foregroundColor").get("color").get("rgbColor").get("red")
+            green = ts.get("foregroundColor").get("color").get("rgbColor").get("green")
+            blue = ts.get("foregroundColor").get("color").get("rgbColor").get("blue")
+            text_buffer = f"<span style=\"color:{rgb_to_hex(red, green, blue)};\">{tr.get('content')}</span>"
             if text_out == "":
                 text_out = text_buffer
             else:
                 text_out = f"<span style=\"color:{rgb_to_hex(red, green, blue)};\">{text_out}</span>"
         return text_out
     
-    return element['textRun'].get('content', '')
+    return tr.get('content', '')
 
 
 def set_rich_link(element):
@@ -108,14 +116,119 @@ def set_rich_link(element):
         return f"<a href=\"{element.get("richLink").get("richLinkProperties").get("uri")}\" target=\"_blank\">{element.get("richLink").get("richLinkProperties").get("title")}</a>"
     
 
-def parse_content(content):
+def _download_bytes(url):
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+    return response.content
+
+
+def _hash_bytes(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def _source_file_url(filename):
+    quoted_name = quote(filename)
+    return f"https://classic.dzzzr.ru/uploaded/{CITY}/Night/games/{GAME_ID}/{quoted_name}"
+
+
+def _download_drive_file(service, file_id):
+    with io.BytesIO() as file_stream:
+        request = service.files().get_media(fileId=file_id)
+        downloader = MediaIoBaseDownload(file_stream, request)
+        done = False
+        while done is False:
+            _status, done = downloader.next_chunk()
+        return file_stream.getvalue()
+
+
+def _build_drive_image_hash_map(credentials):
+    if not FOLDER_ID:
+        return {}
+
+    service = build('drive', 'v3', credentials=credentials)
+    results = service.files().list(
+        q=f"'{FOLDER_ID}' in parents and trashed=false",
+        fields="nextPageToken, files(id, name, mimeType)",
+        pageSize=1000,
+    ).execute()
+
+    image_hashes = {}
+    for item in results.get('files', []):
+        if 'image' not in item.get('mimeType', ''):
+            continue
+        try:
+            file_bytes = _download_drive_file(service, item['id'])
+        except Exception as err:
+            logger.warning(f"Не удалось скачать файл {item.get('name')} из Google Drive для сопоставления картинки: {err}")
+            continue
+        image_hashes[_hash_bytes(file_bytes)] = item['name']
+    return image_hashes
+
+
+def _build_inline_image_resolver(credentials):
+    drive_image_hashes = _build_drive_image_hash_map(credentials)
+    warned_no_drive_images = False
+
+    def resolve(content_uri):
+        nonlocal warned_no_drive_images
+        if not content_uri:
+            return None
+        if not drive_image_hashes:
+            if not warned_no_drive_images:
+                logger.warning(
+                    "FOLDER_ID не задан или в папке нет картинок: вставленные картинки из Google Docs "
+                    "будут добавлены по временным ссылкам Google, а не по адресам DozoR."
+                )
+                warned_no_drive_images = True
+            return content_uri
+        try:
+            image_hash = _hash_bytes(_download_bytes(content_uri))
+        except Exception as err:
+            logger.warning(f"Не удалось скачать вставленную картинку из Google Docs: {err}")
+            return content_uri
+
+        filename = drive_image_hashes.get(image_hash)
+        if filename:
+            return _source_file_url(filename)
+
+        logger.warning(
+            "Вставленная картинка из Google Docs не найдена в FOLDER_ID по содержимому; "
+            "будет использована временная ссылка Google."
+        )
+        return content_uri
+
+    return resolve
+
+
+def set_inline_image(element, inline_objects=None, image_url_resolver=None):
+    inline_object_id = (element.get("inlineObjectElement") or {}).get("inlineObjectId")
+    inline_object = (inline_objects or {}).get(inline_object_id) or {}
+    embedded_object = (
+        inline_object.get("inlineObjectProperties", {})
+        .get("embeddedObject", {})
+    )
+    image_properties = embedded_object.get("imageProperties") or {}
+    content_uri = image_properties.get("contentUri")
+    if not content_uri:
+        return ""
+
+    img_url = image_url_resolver(content_uri) if image_url_resolver else content_uri
+    if not img_url:
+        return ""
+
+    width = embedded_object.get("size", {}).get("width", {}).get("magnitude")
+    width_style = f"width:{round(width)}px;" if width else "width:300px;"
+    return f"<a href=\"{img_url}\" target=\"_blank\"><img style=\"{width_style}\" src=\"{img_url}\"></a>"
+
+
+def parse_content(content, inline_objects=None, image_url_resolver=None):
     result = {}
     stack = [{'node': result, 'level': 0}]
     
     for item in content:
         if 'paragraph' in item:
             paragraph = item['paragraph']
-            style_type = paragraph.get('paragraphStyle', {}).get('namedStyleType', '')
+            style_type = (paragraph.get('paragraphStyle') or {}).get('namedStyleType') or ''
             if style_type.startswith('HEADING'):
                 level = int(style_type.split('_')[1])
 
@@ -135,7 +248,9 @@ def parse_content(content):
 
                 stack.append({'node': new_node, 'level': level})
                 
-            elif style_type == "NORMAL_TEXT":
+            elif not style_type.startswith('HEADING'):
+                # В API у «обычного» текста часто нет namedStyleType (пустая строка) — раньше такие
+                # абзацы отбрасывались, и «Текст:» / «Примечания:» оставались пустыми.
                 if stack:
                     text_content = ''
                     for element in paragraph.get('elements', []):
@@ -143,8 +258,12 @@ def parse_content(content):
                             text_content += set_text_style(element)
                         if 'richLink' in element:
                             text_content += set_rich_link(element)
+                        if 'inlineObjectElement' in element:
+                            text_content += set_inline_image(element, inline_objects, image_url_resolver)
 
                     current_node = stack[-1]['node']
+                    if 'content' not in current_node:
+                        current_node['content'] = ''
                     if current_node['content']:
                         current_node['content'] += text_content
                     else:
@@ -163,11 +282,15 @@ def parse_content(content):
 
 
 def get_gdoc():
-    SCOPES = ['https://www.googleapis.com/auth/documents.readonly']
+    SCOPES = [
+        'https://www.googleapis.com/auth/documents.readonly',
+        'https://www.googleapis.com/auth/drive.readonly',
+    ]
     SERVICE_ACCOUNT_FILE = 'secrets/credentials.json'
 
     credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     service = build('docs', 'v1', credentials=credentials)
+    image_url_resolver = _build_inline_image_resolver(credentials)
 
     try:
         document = service.documents().get(documentId=DOCUMENT_ID, includeTabsContent=True).execute()
@@ -180,7 +303,14 @@ def get_gdoc():
     
     tabs = []
     for tab in document.get('tabs')[3:]:
-        tabs.append({f'{tab.get('tabProperties').get('title')}': parse_content(tab.get('documentTab').get('body').get('content')[1:])})
+        document_tab = tab.get('documentTab')
+        tabs.append({
+            f'{tab.get('tabProperties').get('title')}': parse_content(
+                document_tab.get('body').get('content')[1:],
+                document_tab.get('inlineObjects'),
+                image_url_resolver,
+            )
+        })
     
     return tabs
 

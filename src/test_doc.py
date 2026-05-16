@@ -1,4 +1,7 @@
 from src.gdoc_const import *
+from src.spoiler_helpers import get_spoiler_answer_raw
+from src.spoiler_helpers import get_spoiler_text_raw
+from src.spoiler_helpers import is_spoiler_block_key
 
 from loguru import logger
 
@@ -253,14 +256,28 @@ def test_doc(g_doc_datas: dict, add: bool) -> bool:
                     logger.warning(f"Неверно прописано количество кодов для взятия в '{title}'. Впиши только число")
                     has_error = True
             
-            if g_doc_data.get(title).get(SPOILER):
-                for i, spoiler in enumerate(g_doc_data.get(title).get(SPOILERS)):
-                    if i == 0: continue
-                    if g_doc_data.get(title).get(SPOILERS).get(f"{SPOILER} {i}:").get(TEXT).get(CONTENT) is None:
-                        logger.warning(f"Нет текста спойлера {i} в '{title}'")
+            if g_doc_data.get(title).get(SPOILERS):
+                for spoiler_key in g_doc_data.get(title).get(SPOILERS):
+                    if not is_spoiler_block_key(spoiler_key):
+                        continue
+                    sp_node = g_doc_data.get(title).get(SPOILERS).get(spoiler_key)
+                    if not isinstance(sp_node, dict):
+                        continue
+                    text_raw = get_spoiler_text_raw(sp_node)
+                    code_raw = get_spoiler_answer_raw(sp_node)
+                    text_ok = text_raw is not None
+                    code_ok = code_raw is not None
+                    if not text_ok and not code_ok:
+                        continue
+                    if text_ok and not code_ok:
+                        logger.warning(
+                            f"У спойлера «{spoiler_key}» в '{title}' есть текст, но нет ответа — допишите или уберите блок"
+                        )
                         has_error = True
-                    if g_doc_data.get(title).get(SPOILERS).get(f"{SPOILER} {i}:").get(SPOILER_ANSWERS).get(CONTENT) is None:
-                        logger.warning(f"Нет ответа спойлера {i} в '{title}'")  
+                    elif code_ok and not text_ok:
+                        logger.warning(
+                            f"У спойлера «{spoiler_key}» в '{title}' есть ответ, но нет текста — допишите или уберите блок"
+                        )
                         has_error = True
             
             if g_doc_data.get(title).get(BONUS_CODES):

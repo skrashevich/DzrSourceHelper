@@ -28,7 +28,10 @@ def main():
     while True:
         try:
             action = questionary.select("Выберите действие:", choices=choices).ask()
-            os.system("cls")
+            if os.name == "nt":
+                os.system("cls")
+            else:
+                os.system("clear")
             if action == choices[0]:
                 upload_levels(True)
             if action == choices[1]:

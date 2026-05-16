@@ -1,4 +1,9 @@
-def encode_text(text: str) -> str:
+from typing import Optional
+
+
+def encode_text(text: Optional[str]) -> bytes:
+    if text is None:
+        text = ""
     return text.replace("\n", "<br>") \
                .replace("\ufeff", "") \
                .replace("\u000b", "") \
