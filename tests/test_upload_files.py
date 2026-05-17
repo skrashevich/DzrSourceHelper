@@ -17,13 +17,19 @@ class DummySession:
         return DummyResponse()
 
     def post(self, url, cookies=None, data=None, files=None):
-        self.posts.append({"url": url, "cookies": cookies, "data": data, "files": files})
+        self.posts.append(
+            {"url": url, "cookies": cookies, "data": data, "files": files}
+        )
         return DummyResponse()
 
 
 def test_upload_files_to_source_sends_files(monkeypatch):
     monkeypatch.setattr(upload_files, "authenticate", lambda: "service")
-    monkeypatch.setattr(upload_files, "get_files_from_drive", lambda service, folder: {"img.png": b"binary"})
+    monkeypatch.setattr(
+        upload_files,
+        "get_files_from_drive",
+        lambda service, folder: {"img.png": b"binary"},
+    )
 
     fake_session = DummySession()
     monkeypatch.setattr(upload_files, "get_session", lambda: fake_session)

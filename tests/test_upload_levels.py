@@ -1,7 +1,28 @@
-import builtins
-from types import SimpleNamespace
-
+import src.utils as utils
 import src.upload_levels as upload_levels
+
+
+def _mock_questionary(monkeypatch, confirm_answers):
+    answers = iter(confirm_answers)
+
+    def mock_confirm(*args, **kwargs):
+        class _Q:
+            @staticmethod
+            def ask(**_kw):
+                return next(answers)
+
+        return _Q()
+
+    def mock_text(*args, **kwargs):
+        class _T:
+            @staticmethod
+            def ask(**_kw):
+                return ""
+
+        return _T()
+
+    monkeypatch.setattr(upload_levels.questionary, "confirm", mock_confirm)
+    monkeypatch.setattr(upload_levels.questionary, "text", mock_text)
 
 
 class DummyResponse:
@@ -17,7 +38,9 @@ class DummySession:
         self.gets = []
 
     def post(self, url, headers=None, data=None, cookies=None):
-        self.posts.append({"url": url, "headers": headers, "data": data, "cookies": cookies})
+        self.posts.append(
+            {"url": url, "headers": headers, "data": data, "cookies": cookies}
+        )
         return DummyResponse()
 
     def get(self, url):
@@ -50,15 +73,21 @@ def _build_level(skvoz=True, level_id="1"):
         },
         "Комментарий и фото кодов:": {"content": "comment"},
         "Основные коды уровня:": {
-            "tables": [[
-                ["№", "Код", "КС", "Сектор"],
-                ["1", "CODE1", "1", "A"],
-            ]]
+            "tables": [
+                [
+                    ["№", "Код", "КС", "Сектор"],
+                    ["1", "CODE1", "1", "A"],
+                ]
+            ]
         },
-        "Сектора на уровне:": {"tables": [[
-            ["№", "Название"],
-            ["1", "Sector 1"],
-        ]]},
+        "Сектора на уровне:": {
+            "tables": [
+                [
+                    ["№", "Название"],
+                    ["1", "Sector 1"],
+                ]
+            ]
+        },
         "Количество кодов для взятия:": {
             "Вышка:": {"content": "2"},
         },
@@ -70,17 +99,21 @@ def _build_level(skvoz=True, level_id="1"):
             }
         },
         "Бонусные коды уровня:": {
-            "tables": [[
-                ["№", "Код", "КС", "Бонус"],
-                ["1", "BONUS", "1", "10"],
-            ]]
+            "tables": [
+                [
+                    ["№", "Код", "КС", "Бонус"],
+                    ["1", "BONUS", "1", "10"],
+                ]
+            ]
         },
         "Бонус за полное взятие:": {"content": "5"},
         "Штрафные коды уровня:": {
-            "tables": [[
-                ["№", "Код", "Штраф"],
-                ["1", "FAKE", "2"],
-            ]]
+            "tables": [
+                [
+                    ["№", "Код", "Штраф"],
+                    ["1", "FAKE", "2"],
+                ]
+            ]
         },
         "Штраф за слив:": {"content": "3"},
         "Бонусный:": {"content": "нет", "Время бонуса:": {"content": ""}},
@@ -90,10 +123,16 @@ def _build_level(skvoz=True, level_id="1"):
 def test_upload_levels_add_posts_built_data(monkeypatch):
     fake_session = DummySession()
     monkeypatch.setattr(upload_levels, "get_session", lambda: fake_session)
-    monkeypatch.setattr(upload_levels, "upload_files_to_source", lambda: (_ for _ in ()).throw(AssertionError("should not upload files")))
+    monkeypatch.setattr(
+        upload_levels,
+        "upload_files_to_source",
+        lambda: (_ for _ in ()).throw(AssertionError("should not upload files")),
+    )
 
     uploaded_levels = []
-    monkeypatch.setattr(upload_levels, "upload_tech_level", lambda: uploaded_levels.append("tech"))
+    monkeypatch.setattr(
+        upload_levels, "upload_tech_level", lambda: uploaded_levels.append("tech")
+    )
 
     sample_data = [{"Level 1": _build_level(skvoz=True)}]
     monkeypatch.setattr(upload_levels, "get_gdoc", lambda: sample_data)
@@ -102,8 +141,7 @@ def test_upload_levels_add_posts_built_data(monkeypatch):
     monkeypatch.setattr(upload_levels, "GAME_ID", "game")
     monkeypatch.setattr(upload_levels, "S_URL", "https://example.test")
 
-    inputs = iter(["2", "1", ""])
-    monkeypatch.setattr(builtins, "input", lambda *args, **kwargs: next(inputs))
+    _mock_questionary(monkeypatch, [False, True])
 
     upload_levels.upload_levels(add=True)
 
@@ -113,6 +151,10 @@ def test_upload_levels_add_posts_built_data(monkeypatch):
     assert post_call["data"]["action"] == "add_zadanie"
     assert post_call["data"]["category"] == "game"
     assert post_call["data"]["title"] == "Level 1".encode("cp1251")
+    assert "spoiler[0]" not in post_call["data"]
+    assert "spoilerCode[0]" not in post_call["data"]
+    assert post_call["data"]["spoiler[1]"] == utils.encode_text("spoiler")
+    assert post_call["data"]["spoilerCode[1]"] == utils.encode_text("spoiler_code")
     assert uploaded_levels == ["tech"]
 
 
@@ -129,8 +171,7 @@ def test_upload_levels_update_skips_zero_id(monkeypatch):
     monkeypatch.setattr(upload_levels, "GAME_ID", "game")
     monkeypatch.setattr(upload_levels, "S_URL", "https://example.test")
 
-    inputs = iter(["2", "1", ""])
-    monkeypatch.setattr(builtins, "input", lambda *args, **kwargs: next(inputs))
+    _mock_questionary(monkeypatch, [False, True])
 
     upload_levels.upload_levels(add=False)
 
