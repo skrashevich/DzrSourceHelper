@@ -268,7 +268,10 @@ def test_doc(g_doc_datas: dict, add: bool) -> bool:
                     text_ok = text_raw is not None
                     code_ok = code_raw is not None
                     if not text_ok and not code_ok:
-                        continue
+                        logger.warning(
+                            f"У спойлера «{spoiler_key}» в '{title}' нет текста и ответа — допишите или уберите блок"
+                        )
+                        has_error = True
                     if text_ok and not code_ok:
                         logger.warning(
                             f"У спойлера «{spoiler_key}» в '{title}' есть текст, но нет ответа — допишите или уберите блок"
@@ -326,3 +329,7 @@ def test_doc(g_doc_datas: dict, add: bool) -> bool:
                 logger.warning(f"Нет комментариев к '{title}'")
 
     return has_error
+
+
+def test_encoding():
+    pass

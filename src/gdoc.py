@@ -102,6 +102,8 @@ def set_text_style(element):
                 text_out = text_buffer
             else:
                 text_out = f"<span style=\"color:{rgb_to_hex(red, green, blue)};\">{text_out}</span>"
+        if text_out == "":
+            text_out = tr.get('content', '')
         return text_out
     
     return tr.get('content', '')
@@ -311,10 +313,6 @@ def get_gdoc():
                 image_url_resolver,
             )
         })
-    
+    # with open("doc.json", "w", encoding="utf-8") as f:
+    #     json.dump(tabs, f, ensure_ascii=False, indent=4)
     return tabs
-
-
-if __name__ == "__main__":
-    with open("doc.json", "w", encoding="utf-8") as f:
-        json.dump(get_gdoc(), f, ensure_ascii=False, indent=4)
