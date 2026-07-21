@@ -16,10 +16,18 @@ def authenticate():
 
 
 def get_files_from_drive(service, folder_id):
+    folder_metadata = service.files().get(
+            fileId=folder_id,
+            fields='name'
+        ).execute()
+    folder_name = folder_metadata.get('name')
+    logger.info(f"Имя папки: {folder_name}")
+
     results = service.files().list(
         q=f"'{folder_id}' in parents",
         fields="nextPageToken, files(id, name, mimeType)"
     ).execute()
+    logger.info(f"Найдено {len(results.get('files', []))} файлов в папке {folder_name}")
     items = results.get('files', [])
 
     files_binaries = {}

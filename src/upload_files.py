@@ -36,10 +36,7 @@ def upload_files_to_source():
            logger.warning(f"Файл {file} уже загружен") 
         else:
             logger.warning(f"Файл {file} не загружен")
-            if "401" in resp.text:
-               logger.warning(f"Код ошибки 401")
-            else:
-               logger.warning(resp.text)
+            logger.warning(resp.text)
 
 
 if __name__== "__main__":

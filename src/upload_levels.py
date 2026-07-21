@@ -7,7 +7,7 @@ from config import get_session
 from src.gdoc import get_gdoc
 from src.gdoc_const import *
 from src.utils import encode_text
-from src.test_doc import test_doc
+from src.test_doc import test_doc_data, test_encoding, test_codes_repeat
 from src.test_doc import test_doc_headers
 from src.upload_files import upload_files_to_source
 from src.spoiler_helpers import iter_uploadable_spoilers, spoiler_preview_summary
@@ -100,10 +100,20 @@ def upload_levels(add = True) -> None:
         return None
     logger.success("Ошибок в заголовках дока нет")
 
-    if test_doc(g_doc_datas, add): 
+    if test_doc_data(g_doc_datas, add): 
         logger.warning("Есть ошибки в данных дока. Заливка невозможна")
         return None
     logger.success("Ошибок данных дока нет")
+
+    if test_encoding(g_doc_datas):
+        logger.warning("Есть ошибки в перекодировании дока. Заливка невозможна")
+        return None
+    logger.success("Ошибок перекодирования дока нет")
+
+    if test_codes_repeat(g_doc_datas):
+        logger.warning("Есть повторяющиеся коды в доке. Заливка невозможна")
+        return None
+    logger.success("Повторяющихся кодов в доке нет")
 
     _log_levels_preview(g_doc_datas, add)
 

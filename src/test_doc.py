@@ -1,17 +1,12 @@
+from loguru import logger
+
+from src.gdoc import get_gdoc
 from src.gdoc_const import *
 from src.spoiler_helpers import get_spoiler_answer_raw
 from src.spoiler_helpers import get_spoiler_text_raw
 from src.spoiler_helpers import is_spoiler_block_key
+from src.utils import encode_text
 
-from loguru import logger
-
-
-
-def check_codes_repeat(g_doc_datas: dict):
-    for g_doc_data in g_doc_datas:
-        for title in g_doc_data:
-            for i, code in enumerate(g_doc_data.get(title).get("Основные коды уровня:").get("tables")[0][1:]):
-                pass
 
 
 def test_doc_headers(g_doc_datas: dict) -> bool:
@@ -115,7 +110,7 @@ def test_doc_headers(g_doc_datas: dict) -> bool:
     return has_error
 
 
-def test_doc(g_doc_datas: dict, add: bool) -> bool:
+def test_doc_data(g_doc_datas: dict, add: bool) -> bool:
     logger.info("Проверяю данные дока")
     
     has_error = False
@@ -162,7 +157,7 @@ def test_doc(g_doc_datas: dict, add: bool) -> bool:
             if g_doc_data.get(title).get(LEVEL_TEXT).get(TEXT).get(CONTENT) is None: 
                 logger.warning(f"Нет текста задания в '{title}'")
                 has_error = True
-            
+
             if g_doc_data.get(title).get(LEVEL_TEXT).get(NOTES).get(CONTENT) is None:
                 logger.warning(f"Нет текста примечаний в '{title}'")
                 has_error = True
@@ -331,5 +326,88 @@ def test_doc(g_doc_datas: dict, add: bool) -> bool:
     return has_error
 
 
-def test_encoding():
-    pass
+def test_encoding(g_doc_datas: dict) -> bool:
+    logger.info("Проверяю перекодировку дока")
+    
+    for g_doc_data in g_doc_datas:
+        for title in g_doc_data:
+            try:
+                logger.info(f"Проверяю перекодировку в '{title}'")
+                for symb in f"{g_doc_data.get(title)}":
+                    encode_text(symb)
+                return False
+            except Exception as e:
+                logger.warning(f"Ошибка перекодировки в уровне '{title}'. Невозможно перекодировать символ '{symb}'")
+                return True
+
+
+def test_codes_repeat(g_doc_datas: dict) -> bool:
+    logger.info("Проверяю повторяющиеся коды в доке")
+
+    has_error = False
+    for g_doc_data in g_doc_datas:
+        for title in g_doc_data:
+            codes =  {}
+            for i, code in enumerate(g_doc_data.get(title).get(MAIN_CODES).get("tables")[0][1:]):
+                codes[code[1]] = codes.get(code[1], [])
+                codes[code[1]].append(code[0])
+            for code, ids in codes.items():
+                if len(ids) > 1:
+                    logger.warning(f"В уровне '{title}' код '{code}' повторяется под номерами: {', '.join(ids)}")
+                    has_error = True
+
+            if g_doc_data.get(title).get(BONUS_CODES):
+                bonus_codes =  {}
+                for i, code in enumerate(g_doc_data.get(title).get(BONUS_CODES).get("tables")[0][1:]):
+                    bonus_codes[code[1]] = bonus_codes.get(code[1], [])
+                    bonus_codes[code[1]].append(code[0])
+                for code, ids in bonus_codes.items():
+                    if len(ids) > 1:
+                        logger.warning(f"В уровне '{title}' бонусный код '{code}' повторяется под номерами: {', '.join(ids)}")
+                        has_error = True
+            
+            if g_doc_data.get(title).get(FAKE_CODES):
+                fake_codes =  {}
+                for i, code in enumerate(g_doc_data.get(title).get(FAKE_CODES).get("tables")[0][1:]):
+                    fake_codes[code[1]] = fake_codes.get(code[1], [])
+                    fake_codes[code[1]].append(code[0])
+                for code, ids in fake_codes.items():
+                    if len(ids) > 1:
+                        logger.warning(f"В уровне '{title}' штрафной код '{code}' повторяется под номерами: {', '.join(ids)}")
+                        has_error = True
+    
+    return has_error
+
+
+def test_doc(add: bool) -> bool:
+    logger.info("Проверяю док")
+    
+    logger.info("Получаю данные из гугл дока")
+    g_doc_datas = get_gdoc()
+    if g_doc_datas is None:
+        logger.error(
+            "Данные из Google Docs не получены (проверьте DOCUMENT_ID в secrets/.env — "
+            "это ID из URL документа; сервисный аккаунт должен иметь доступ к файлу)."
+        )
+        return None
+    logger.success("Данные из гугл дока получены")
+
+    if test_doc_headers(g_doc_datas):
+        logger.warning("Есть ошибки в заголовках дока")
+        return None
+    logger.success("Ошибок в заголовках дока нет")
+
+    if test_doc_data(g_doc_datas, add): 
+        logger.warning("Есть ошибки в данных дока")
+        return None
+    logger.success("Ошибок данных дока нет")
+
+    if test_encoding(g_doc_datas):
+        logger.warning("Есть ошибки в перекодировании дока")
+        return None
+    logger.success("Ошибок перекодирования дока нет")
+
+    if test_codes_repeat(g_doc_datas):
+        logger.warning("Есть повторяющиеся коды в доке")
+        return None
+    logger.success("Повторяющихся кодов в доке нет")  

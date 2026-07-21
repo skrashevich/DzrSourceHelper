@@ -6,6 +6,7 @@ import questionary
 from loguru import logger
 
 from config import check_config_files
+from src.test_doc import test_doc
 from src.upload_levels import upload_levels
 from src.upload_files import upload_files_to_source
 
@@ -21,10 +22,12 @@ logger.add(sys.stderr, format="<level>{level}</level>: <level>{message}</level>"
 
 
 def main():
-    if not check_config_files():
+    logger.info(f"Проверка конфигурационных файлов и переменных окружения")
+    if check_config_files():
+        questionary.text("Нажми любую клавишу для выхода").ask()
         return None
     
-    choices=["Добавить задания с нуля", "Обновить существующие уровни", "Закачать файлы из гугл диска в движок", "Выйти из программы"]
+    choices=["Добавить задания с нуля", "Обновить существующие уровни", "Закачать файлы из гугл диска в движок", "Проверить док", "Выйти из программы"]
     while True:
         try:
             action = questionary.select("Выберите действие:", choices=choices).ask()
@@ -39,6 +42,8 @@ def main():
             if action == choices[2]:
                 upload_files_to_source()
             if action == choices[3]:
+                test_doc(True)
+            if action == choices[4]:
                 break
         except Exception as err:
             logger.exception(err)
